@@ -1,0 +1,55 @@
+Attributes of wavefront.Wavefront:
+file_name
+mtllibs: List of .mtl filenames
+materials: Dictionary of <material.Material>.
+meshes: Dictionary of <mesh.Mesh>
+vertices: List of 3-tuples of floats
+mesh_list: topex.meshes but in list form. Use this!
+parser: <obj.ObjParser>
+
+Attributes of obj.ObjParser:
+file_name: <class 'pathlib.PosixPath'>
+strict: <class 'bool'>
+encoding: <class 'str'>
+dir: <class 'pathlib.PosixPath'>
+dispatcher: <class 'dict'>
+lines: <class 'generator'>
+line: <class 'NoneType'>
+values: <class 'NoneType'>
+wavefront: <class 'pywavefront.wavefront.Wavefront'>
+mesh: <class 'pywavefront.mesh.Mesh'>
+material: <class 'pywavefront.material.Material'>
+create_materials: <class 'bool'>
+collect_faces: <class 'bool'>
+cache: <class 'bool'>
+cache_loaded: <class 'NoneType'>
+normals: <class 'list'>
+tex_coords: <class 'list'>
+
+Attributes of mesh.Mesh:
+name: None
+materials: Wavefront.materials in List form. Use this!
+has_faces: false
+faces: empty list
+
+Attributes of material.Material:
+name
+diffuse: 4-list of floats
+ambient: 4-list of floats
+specular: 4-list of floats
+emissive: 4-list of floats
+transparency: float
+shininess: float
+optical_density: float
+illumination_model: float
+texture: empty
+texture_ambient: empty
+texture_specular_color: empty
+texture_specular_highlight: empty
+texture_alpha: empty
+texture_bump: <texture.Texture>
+is_default: False
+vertex_format: 'T2F_N3F_V3F' or 'N3F_V3F'
+vertices: List of floats
+gl_floats: empty
+
