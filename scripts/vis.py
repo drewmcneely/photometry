@@ -1,112 +1,137 @@
-import pandas as pd
-import numpy as np
 import plotly.offline as py
-import plotly.graph_objs as go
-import json
+import numpy as np           
+from helpers import *
+np.set_printoptions(suppress=True,linewidth=80,threshold=80)
 
-#py.init_notebook_mode(connected=False)
-
-izip = zip
-
-df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/globe_contours.csv')
-df.head()
-
-contours = []
-
-scl = ['rgb(213,62,79)','rgb(244,109,67)','rgb(253,174,97)',\
-       'rgb(254,224,139)','rgb(255,255,191)','rgb(230,245,152)',\
-       'rgb(171,221,164)','rgb(102,194,165)','rgb(50,136,189)']
-
-def pairwise(iterable):
-    a = iter(iterable)
-    return izip(a, a)
-
-i=0
-for lat, lon in pairwise(df.columns):
-    contours.append( dict(
-        type = 'scattergeo',
-        lon = df[lon],
-        lat = df[lat],
-        mode = 'lines',
-        line = dict(
-            width = 2,
-            color = scl[i]
-        )
-    ) )
-    i = 0 if i+1 >= len(df.columns)/4 else i+1
-
-layout = dict(
-        margin = dict( t = 0, l = 0, r = 0, b = 0 ),
-        showlegend = False,         
-        geo = dict(
-            showland = True,
-            showlakes = True,
-            showcountries = True,
-            showocean = True,
-            countrywidth = 0.5,
-            landcolor = 'rgb(230, 145, 56)',
-            lakecolor = 'rgb(0, 255, 255)',
-            oceancolor = 'rgb(0, 255, 255)',
-            projection = dict( 
-                type = 'orthographic',
-                rotation = dict(lon = 0, lat = 0, roll = 0 )            
-            ),
-            lonaxis = dict( 
-                showgrid = True,
-                gridcolor = 'rgb(102, 102, 102)',
-                gridwidth = 0.5
-            ),
-            lataxis = dict( 
-                showgrid = True,
-                gridcolor = 'rgb(102, 102, 102)',
-                gridwidth = 0.5
+class PlotlyStuff:
+    def layout_helper():
+        # Set the plot layout:
+        noaxis=dict(
+            showbackground=False,
+            showgrid=False,
+            showline=False,
+            showticklabels=False,
+            ticks='',
+            title='',
+            zeroline=False
             )
+
+        aspectratio=dict(x=1,y=1,z=1)
+        eye=dict(x=1.15, y=1.15, z=1.15)
+        camera=dict(eye=eye)
+        font=dict(family='Balto', size=14)
+
+        scene=dict(
+            xaxis=noaxis, 
+            yaxis=noaxis, 
+            zaxis=noaxis,
+            aspectratio=aspectratio,
+            camera=camera
         )
+
+        layout3d=dict(
+            title='Outgoing Longwave Radiation Anomalies<br>Dec 2017-Jan 2018',
+            font=font,
+            width=800, 
+            height=800,
+            scene=scene,
+            paper_bgcolor='rgba(235,235,235, 0.9)'  
+            )
+
+        return layout3d
+
+    layout = layout_helper()
+    
+    colorscale=[[0.0, '#313695'],
+        [0.07692307692307693, '#3a67af'],
+        [0.15384615384615385, '#5994c5'],
+        [0.23076923076923078, '#84bbd8'],
+        [0.3076923076923077, '#afdbea'],
+        [0.38461538461538464, '#d8eff5'],
+        [0.46153846153846156, '#d6ffe1'],
+        [0.5384615384615384, '#fef4ac'],
+        [0.6153846153846154, '#fed987'],
+        [0.6923076923076923, '#fdb264'],
+        [0.7692307692307693, '#f78249'],
+        [0.8461538461538461, '#e75435'],
+        [0.9230769230769231, '#cc2727'],
+        [1.0, '#a50026']]
+
+    colorbar=dict(thickness=20, len=0.75, ticklen=4, title= 'W/m²')
+
+    # Define the text to be displayed on hover:
+    def hovertext(clons, clats, OLR, ncolumns, nrows):
+        text = [
+            ['lon: ' +
+                '{:.2f}'.format(clons[i,j]) +
+                '<br>lat: ' +
+                '{:.2f}'.format(clats[i, j])+
+                '<br>W: ' +
+                '{:.2f}'.format(OLR[i][j])
+                for j in range(ncolumns)]
+            for i in range(nrows)]
+        return text
+
+# Read data from a `netCDF` file:
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    with netcdf.netcdf_file('compday.KsNOdsJTz1.nc', 'r') as f:
+        lon = f.variables['lon'][::]       # copy longitude as list
+        lat = f.variables['lat'][::-1]     # invert the latitude vector -> South to North
+        olr = f.variables['olr'][0,::-1,:] # olr= outgoing longwave radiation
+    f.fp   
+
+def data_shift(lon, olr):
+    # Shift 'lon' from [0,360] to [-180,180]
+    # Correspondingly, shift the olr array
+    tmp_lon = np.array([lon[n]-360 if l>=180 else lon[n] 
+                       for n,l in enumerate(lon)])  # => [0,180]U[-180,2.5]
+
+    i_east, = np.where(tmp_lon>=0)  # indices of east lon
+    i_west, = np.where(tmp_lon<0)   # indices of west lon
+    lon = np.hstack((tmp_lon[i_west], tmp_lon[i_east]))  # stack the 2 halves
+
+    olr_ground = np.array(olr)
+    olr = np.hstack((olr_ground[:,i_west], olr_ground[:,i_east]))
+
+    return lon, olr
+
+lon, olr = data_shift(lon, olr)
+
+# In order to plot the scalar field  as a heatmap onto the sphere,
+# we  define the sphere as a surface colored according   to the `olr` values.
+# To ensure  color continuity we extend the `lon` list with [180]
+# (its last value was lon[-1]=177.5).
+# In this way we can identify lon=-180 with lon=180.
+clons=np.array(lon.tolist()+[180], dtype=np.float64)
+clats=np.array(lat, dtype=np.float64)
+clons, clats=np.meshgrid(clons, clats)
+
+
+# Map the meshgrids `clons`, `clats` onto the sphere:
+XS, YS, ZS=mapping_map_to_sphere(clons, clats)
+
+
+# The sphere points are colormapped according to the values of the numpy array,
+# `OLR`, that extends the array `olr`, to ensure color continuity:
+nrows, ncolumns=clons.shape
+OLR=np.zeros(clons.shape, dtype=np.float64)
+OLR[:, :ncolumns-1]=np.copy(np.array(olr,  dtype=np.float64))
+OLR[:, ncolumns-1]=np.copy(olr[:, 0])
+
+sphere=dict(
+    type='surface',
+    x=XS, 
+    y=YS, 
+    z=ZS,
+    colorscale=PlotlyStuff.colorscale,
+    surfacecolor=OLR,
+    cmin=-20, 
+    cmax=20,
+    colorbar=PlotlyStuff.colorbar,
+    text=PlotlyStuff.hovertext(clons, clats, OLR, ncolumns, nrows),
+    hoverinfo='text'
     )
 
-sliders = []
-
-lon_range = np.arange(-180, 180, 10)
-lat_range = np.arange(-90, 90, 10)
-
-sliders.append( 
-    dict(
-        active = len(lon_range)/2,
-        currentvalue = {"prefix": "Longitude: "},
-        pad = {"t": 0},
-        steps = [{
-                'method':'relayout', 
-                'label':str(i),
-                'args':['geo.projection.rotation.lon', i]} for i in lon_range]
-    )      
-)
-
-sliders.append( 
-    dict(
-        active = len(lat_range)/2,
-        currentvalue = {"prefix": "Latitude: "},
-        pad = {"t": 100},
-        steps = [{
-                'method':'relayout', 
-                'label':str(i),
-                'args':['geo.projection.rotation.lat', i]} for i in lat_range]
-    )      
-)
-
-projections = [ "equirectangular", "mercator", "orthographic", "natural earth","kavrayskiy7", 
-               "miller", "robinson", "eckert4", "azimuthal equal area","azimuthal equidistant", 
-               "conic equal area", "conic conformal", "conic equidistant", "gnomonic", "stereographic", 
-               "mollweide", "hammer", "transverse mercator", "albers usa", "winkel tripel" ]
-
-buttons = [ dict( args=['geo.projection.type', p], label=p, method='relayout' ) for p in projections ]
-
-annot = list([ dict( x=0.1, y=0.8, text='Projection', yanchor='bottom', 
-                    xref='paper', xanchor='right', showarrow=False )])
-
-# Update Layout Object
-layout[ 'updatemenus' ] = list([ dict( x=0.1, y=0.8, buttons=buttons, yanchor='top' )])
-layout[ 'annotations' ] = annot
-layout[ 'sliders' ] = sliders
-
-#fig = dict( data=contours, layout=layout )
-#py.plot(fig, filename="example.html")
+fig=dict(data=sphere, layout=PlotlyStuff.layout)
+py.plot(fig, filename="heatmap.html")
