@@ -1,3 +1,6 @@
+from numpy import dot, pi
+from helpers import *
+
 # Assume a material object has whatever parameter
 # that is specified by the model.
 
@@ -46,28 +49,28 @@ def ashikhmin_shirley_diffuse(mat, geom):
 
 def spec_helper(mat, geom, ret_fun):
     if geom.V == geom.R: return ret_fun(mat, geom)
-    else return 0
+    else: return 0
 
 def perfect_specular(mat, geom):
-    return spec_helper(mat, geom, lambda (m,g): 1)
+    return spec_helper(mat, geom, lambda m,g: 1)
 
 def fresnel_perfect_specular(mat, geom):
     if geom.V == geom.R: return mat.F_0
-    else return 0
+    else: return 0
 
 def wetterer_perfect_specular(mat, geom):
     if geom.V == geom.R: return mat.F_0 / geom.mu_i
-    else return 0
+    else: return 0
 
 
 def lobe_helper(mat, geom, ret_fun):
     e = mat.lobe_radius
     if angle(geom.V, geom.R) < e:
         return ret_fun(mat, geom)
-    else return 0
+    else: return 0
 
 def crappy_lobe_specular(mat, geom):
-    return lobe_helper(mat, geom, lambda (m,g): 1)
+    return lobe_helper(mat, geom, lambda m,g: 1)
 
 def lobe_specular(mat, geom):
     def ret_fun(m,g):
@@ -105,5 +108,3 @@ def cook_torrance_specular(mat, geom):
 
 def ashikhmin_shirley_diffuse(mat, geom):
     pass
-
-

@@ -4,7 +4,7 @@ import plotly.offline as py
 import plotly.graph_objs as go
 import json
 
-py.init_notebook_mode(connected=False)
+#py.init_notebook_mode(connected=False)
 
 izip = zip
 
@@ -111,4 +111,4 @@ layout[ 'annotations' ] = annot
 
 layout[ 'sliders' ] = sliders
 fig = dict( data=contours, layout=layout )
-py.iplot( fig)
+py.plot(fig, filename="contours.html")
