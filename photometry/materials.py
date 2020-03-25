@@ -19,6 +19,66 @@ class MaterialProperty:
         self.rho=rho
         self.alpha=alpha
 
+class FacetGeometry:
+    def __init__(self, light_direction, viewer_direction, surface_normal):
+        self._light = light_direction
+        self._view = viewer_direction
+        self._normal = surface_normal
+
+    @property
+    def light_direction(self): return self._light
+    incidence_direction = light_direction
+    L = light_direction
+    I = light_direction
+    E_0 = light_direction
+
+    @property
+    def viewer_direction(self): return self._view
+    observation_direction = viewer_direction
+    V = viewer_direction
+    O = viewer_direction
+    E = viewer_direction
+
+    @property
+    def surface_normal(self): return self._normal
+    N = surface_normal
+
+    @property
+    def R(self): return self.L.reflected_across(self.N)
+
+    @property
+    def H(self): return SpherePoint.midpoint(self.L, self.V)
+
+
+    # Angles
+    @property
+    def incidence_angle(self): return SpherePoint.angle_between(self.N, self.I)
+    light_angle = incidence_angle
+    theta_i = incidence_angle
+    theta_0 = incidence_angle
+
+    @property
+    def observation_angle(self): return SpherePoint.angle_between(self.N, self.O)
+    viewer_angle = observation_angle
+    theta_r = observation_angle
+    theta = observation_angle
+
+    @property
+    def phase_angle(self): return SpherePoint.angle_between(self.O, self.I)
+    phi = phase_angle
+    alpha = phase_angle
+
+    # Projections
+    @property
+    def light_projected_area(self): return self.L.dot(self.N)
+    mu_i = light_projected_area
+    mu_0 = light_projected_area
+
+    @property
+    def viewer_projected_area(self): return self.V.dot(self.N)
+    mu_r = viewer_projected_area
+    mu = viewer_projected_area
+
 class Facet:
     def __init__(self,
             area=1,

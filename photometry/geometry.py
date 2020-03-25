@@ -1,6 +1,7 @@
-import numpy as np
-from numpy import dot, pi, sin, cos, arctan2, arccos
+from numpy import array, dot as npdot, pi, sin, cos, arctan2, arccos, sqrt
 from numpy.linalg import norm
+
+from collections import deque
 
 def normalize(v):
     n = norm(v)
@@ -85,7 +86,7 @@ class SpherePoint:
         return cls.from_colatlon(colat, lon)
 
     # Metrics
-    def dot(s1, s2): return np.dot(s1.vector, s2.vector)
+    def dot(s1, s2): return npdot(s1.vector, s2.vector)
     cos_between = dot
 
     def angle_between(s1, s2): return acos(cos_between(s1, s2))
@@ -96,7 +97,7 @@ class SpherePoint:
     def reflection(cls, s1, s2):
         v1 = s1.vector
         v2 = s2.vector
-        v_reflected = (2*dot(v1, v2)*v2) - v1
+        v_reflected = (2*npdot(v1, v2)*v2) - v1
         return cls(v_reflected)
     def reflected_across(s1, s2):
         return SpherePoint.reflection(s1, s2)
@@ -105,62 +106,110 @@ class SpherePoint:
     @classmethod
     def barycenter(cls, points): return cls(sum([p.vector for p in points]))
 
-class FacetGeometry:
-    def __init__(self, light_direction, viewer_direction, surface_normal):
-        self._light = light_direction
-        self._view = viewer_direction
-        self._normal = surface_normal
+class Triangle:
+    def __init__(p1, p2, p3):
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+
+    @classmethod
+    def from_points(cls, points): return cls(*points)
+
+    @classmethod
+    def from_indices(cls, indices, points):
+        return cls.from_points([points[i] for i in indices])
 
     @property
-    def light_direction(self): return self._light
-    incidence_direction = light_direction
-    L = light_direction
-    I = light_direction
-    E_0 = light_direction
+    def points(self): return [self.p1, self.p2, self.p3]
 
     @property
-    def viewer_direction(self): return self._view
-    observation_direction = viewer_direction
-    V = viewer_direction
-    O = viewer_direction
-    E = viewer_direction
+    def divided(self):
+        """Take a Triangle and return a list of 4 Triangles
+        making a "triforce" pattern.
+        """
+
+        ps = deque(self.points)
+        pr = ps.copy()
+        pr.rotate(-1)
+
+        mids = deque([s.midpoint(r) for s,r in zip(ps, pr)])
+        midr = mids.copy()
+        midr.rotate()
+        tris = [Triangle(*z) for z in zip(ps, mids, midr)]
+        return tris + [Triangle(*mids)]
 
     @property
-    def surface_normal(self): return self._normal
-    N = surface_normal
+    def barycenter(self): return SpherePoint.barycenter(self.points)
 
     @property
-    def R(self): return self.L.reflected_across(self.N)
+    def earth_coordinates(self):
+        ps = self.points
+        point_ring = [ps[i] for i in [0,1,2,0]]
+        coords = [p.earth_coordinates for p in point_ring]
+        return [coords]
+
+class GeoHedron
+    def __init__(triangles):
+        self.triangles = triangles
 
     @property
-    def H(self): return SpherePoint.midpoint(self.L, self.V)
+    def divided_once(self):
+        return GeoHedron(sum([tri.divided for tri in self.triangles]))
 
+    def divided(self, n):
+        if n<=0: return self
+        else: return self.divided_once.divided(n-1)
 
-    # Angles
-    @property
-    def incidence_angle(self): return SpherePoint.angle_between(self.N, self.I)
-    light_angle = incidence_angle
-    theta_i = incidence_angle
-    theta_0 = incidence_angle
-
-    @property
-    def observation_angle(self): return SpherePoint.angle_between(self.N, self.O)
-    viewer_angle = observation_angle
-    theta_r = observation_angle
-    theta = observation_angle
+    @classmethod
+    def sphere(cls):
+        return cls.icosahedron.divided(1)
 
     @property
-    def phase_angle(self): return SpherePoint.angle_between(self.O, self.I)
-    phi = phase_angle
-    alpha = phase_angle
+    def barycenters(self):
+        return [tri.barycenter for tri in self.triangles]
 
-    # Projections
-    @property
-    def light_projected_area(self): return self.L.dot(self.N)
-    mu_i = light_projected_area
-    mu_0 = light_projected_area
+    @classmethod
+    def icosahedron(cls):
+        t = (1.0 + sqrt(5.0)) / 2.0;
 
-    @property
-    def viewer_projected_area(self): return self.V.dot(self.N)
-    mu_r = viewer_projected_area
-    mu = viewer_projected_area
+        vectors = [
+            [-1,  t,  0],
+            [ 1,  t,  0],
+            [-1, -t,  0],
+            [ 1, -t,  0],
+            [ 0, -1,  t],
+            [ 0,  1,  t],
+            [ 0, -1, -t],
+            [ 0,  1, -t],
+            [ t,  0, -1],
+            [ t,  0,  1],
+            [-t,  0, -1],
+            [-t,  0,  1]
+            ]
+        points = [SpherePoint.from_list(l) for l in vectors]
+
+        idxs = [
+            [0, 11, 5],
+            [0, 5, 1],
+            [0, 1, 7],
+            [0, 7, 10],
+            [0, 10, 11],
+            [1, 5, 9],
+            [5, 11, 4],
+            [11, 10, 2],
+            [10, 7, 6],
+            [7, 1, 8],
+            [3, 9, 4],
+            [3, 4, 2],
+            [3, 2, 6],
+            [3, 6, 8],
+            [3, 8, 9],
+            [4, 9, 5],
+            [2, 4, 11],
+            [6, 2, 10],
+            [8, 6, 7],
+            [9, 8, 1]
+            ]
+
+        tris = [Triangle.from_indices(idx, points) for idx in idxs]
+        return cls(tris)
