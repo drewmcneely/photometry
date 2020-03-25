@@ -3,9 +3,10 @@ from numpy import dot
 
 import reflectivity_laws as refl
 from helpers import *
+from geometry import SpherePoint, FacetGeometry
 
 class MaterialProperty:
-    # List of Parameters
+    # List of attributes used in reflectivity_laws:
     # rho
     # E_0
     # color: Color vector
@@ -19,60 +20,64 @@ class MaterialProperty:
         self.alpha=alpha
 
 class Facet:
-    # List of Parameters
-    # area
-    # normal_vector
-    # properties :: MaterialProperty
-    # diffuse_fraction
-    # specular_fraction
-    # diffuse_law
-    # specular_law
     def __init__(self,
             area=1,
-            normal_vector=np.array([1, 0, 0]),
-            properties=MaterialProperty(),
+            normal_direction=SpherePoint.from_list([1,0,0])
+            material_property=MaterialProperty(),
             diffuse_fraction=0.5,
             diffuse_law=refl.lambert_diffuse,
             specular_law=refl.blinn_phong_specular
             ):
         self.area = area
-        self.normal_vector = normal_vector
-        self.properties = properties
+        self.normal_direction = normal_direction
+        self.material_property = material_property
         self.diffuse_fraction = diffuse_fraction
         self.specular_fraction = 1-self.diffuse_fraction
         self.diffuse_law = diffuse_law
         self.specular_law = specular_law
 
-    def geometry(self, L, V):
-        return FacetGeometry(L, V, self.normal_vector)
+    @property
+    def k_d(self): return self.diffuse_fraction
+    d = k_d
 
-    def reflectivity(self, L, V):
-        mat = self.properties
-        geom = self.geometry(L, V)
-        kd = self.diffuse_fraction
-        ks = self.specular_fraction
-        Rd = self.diffuse_law
-        Rs = self.specular_law
+    @property
+    def k_s(self): return self.specular_fraction
+    s = k_s
 
-        R = kd*Rd(mat, geom) + ks*Rs(mat, geom)
-        return R
+    @property
+    def reflectivity_law(self, mat, geom):
+        d = self.d
+        s = self.s
+        Rd = self.diffuse_law(mat, geom)
+        Rs = self.specular_law(mat, geom)
+        return d*Rd + s*Rs
 
-    def scattering(self, L, V):
-        geom = self.geometry(L, V)
+    def scattering_law(self, mat, geom):
+        R = self.reflectivity_law
         mu = geom.mu
         mu_0 = geom.mu_0
-
         if mu<0 or mu_0<0:
-            return 0
+            S = 0
         else:
-            R = self.reflectivity(L, V)
-            S = mu * mu_0 * R
-            return S
+            R = self.reflectivity_law
+            S = self.area * mu * mu_0 * R(mat, geom)
+        return S
+
+    def mat_geom_pair(self, light_direction, viewer_direction):
+        mat = self.material_property
+        geom = FacetGeometry(light_direction, viewer_direction, self.normal_direction)
+        return (mat, geom)
+
+    def scatter(self, light_direction, viewer_direction):
+        s = self.scattering_law
+        mgpair = self.mat_geom_pair(light_direction, viewer_direction)
+        return s(*mgpair)
 
 class Model:
     # list of facets
     def __init__(self, facets=[Facet()]):
         self.facets = facets
 
-    def scattering(self, L, V):
-        return sum([f.scattering(L,V) for f in self.facets])
+    def scatter(self, light_direction, viewer_direction):
+        scatters = [f.scatter(light_direction, viewer_direction) for f in self.facets]
+        return sum(scatters)

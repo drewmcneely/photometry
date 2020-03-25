@@ -12,6 +12,8 @@ from helpers import *
 # N: Surface normal direction
 # R: Direction that N perfectly reflects L
 
+# All functions with (mat, geom) in the arguments are of type
+# f :: MaterialProperty -> FacetGeometry -> RealNumber
 
 # Diffuse reflectivity laws
 def lambert_diffuse(mat, geom):

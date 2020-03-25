@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import dot, pi, sin, cos, arctan as atan, arccos as acos
+from numpy import dot, pi, sin, cos, arctan2, arccos
 from numpy.linalg import norm
 
 def normalize(v):
@@ -46,15 +46,26 @@ class SpherePoint:
         z = cos(theta)
         return cls.from_list([x,y,z])
     @property
-    def _ISO_phi(self): return atan(self.y / self.x)
+    def _ISO_phi(self): return arctan2(self.y, self.x)
     @property
-    def _ISO_theta(self): return acos(self.z)
+    def _ISO_theta(self): return arccos(self.z)
 
     ## Colatitude, latitude, longitude getters
     colatitude = _ISO_theta
+
     @property
-    def latitude(self): return pi - self.colatitude
+    def latitude(self): return Angle.from_degrees(90.0) - self.colatitude
+
+    @property
+    def earth_latitude(self): return Angle.to_degrees(self.latitude)
+
     longitude = _ISO_phi
+
+    @property
+    def earth_longitude(self): return Angle.to_degrees(self.longitude)
+
+    @property
+    def earth_coordinates(self): return (self.earth_longitude, self.earth_latitude)
 
     ## Abbreviations
     lat = latitude
@@ -93,7 +104,6 @@ class SpherePoint:
     def midpoint(cls, s1, s2): return cls(s1.vector + s2.vector)
     @classmethod
     def barycenter(cls, points): return cls(sum([p.vector for p in points]))
-
 
 class FacetGeometry:
     def __init__(self, light_direction, viewer_direction, surface_normal):

@@ -1,6 +1,5 @@
 import plotly.offline as py
 import numpy as np           
-from helpers import *
 from geometry import SpherePoint, Angle
 import pandas as pd
 

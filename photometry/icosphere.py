@@ -37,17 +37,24 @@ class Triangle:
     @property
     def barycenter(self): return SpherePoint.barycenter(self.points)
 
+    @property
+    def earth_coordinates(self):
+        ps = self.points
+        point_ring = [ps[i] for i in [0,1,2,0]]
+        coords = [p.earth_coordinates for p in point_ring]
+        return [coords]
+
 class GeoHedron
     def __init__(triangles):
         self.triangles = triangles
 
+    @property
     def divided_once(self):
         return GeoHedron(sum([tri.divided for tri in self.triangles]))
 
     def divided(self, n):
         if n<=0: return self
         else: return self.divided_once.divided(n-1)
-
 
     @classmethod
     def sphere(cls):
