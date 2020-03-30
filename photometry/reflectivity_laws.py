@@ -1,5 +1,4 @@
 from numpy import pi
-from helpers import *
 
 # Assume a material object has whatever parameter
 # that is specified by the model.

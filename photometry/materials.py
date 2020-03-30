@@ -2,8 +2,7 @@ import numpy as np
 from numpy import dot
 
 import reflectivity_laws as refl
-from helpers import *
-from geometry import SpherePoint, FacetGeometry
+from geometry import SpherePoint
 
 class MaterialProperty:
     # List of attributes used in reflectivity_laws:
@@ -70,9 +69,16 @@ class FacetGeometry:
 
     # Projections
     @property
-    def light_projected_area(self): return self.L.dot(self.N)
-    mu_i = light_projected_area
-    mu_0 = light_projected_area
+    def light_projected_area(self): 
+        L = self.L
+        N = self.N
+        l = L.dot(N)
+        return l
+
+    @property
+    def mu_i(self): return self.light_projected_area
+    @property
+    def mu_0(self): return self.light_projected_area
 
     @property
     def viewer_projected_area(self): return self.V.dot(self.N)
@@ -82,7 +88,7 @@ class FacetGeometry:
 class Facet:
     def __init__(self,
             area=1,
-            normal_direction=SpherePoint.from_list([1,0,0])
+            normal_direction=SpherePoint.from_list([1,0,0]),
             material_property=MaterialProperty(),
             diffuse_fraction=0.5,
             diffuse_law=refl.lambert_diffuse,
@@ -104,7 +110,6 @@ class Facet:
     def k_s(self): return self.specular_fraction
     s = k_s
 
-    @property
     def reflectivity_law(self, mat, geom):
         d = self.d
         s = self.s
@@ -113,7 +118,6 @@ class Facet:
         return d*Rd + s*Rs
 
     def scattering_law(self, mat, geom):
-        R = self.reflectivity_law
         mu = geom.mu
         mu_0 = geom.mu_0
         if mu<0 or mu_0<0:
