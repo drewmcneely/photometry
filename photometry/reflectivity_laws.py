@@ -109,3 +109,18 @@ def cook_torrance_specular(mat, geom):
 
 def ashikhmin_shirley_diffuse(mat, geom):
     pass
+
+
+## Scattering Laws
+
+def wavefront(Kd, N, L, Ks, H, Ns):
+    return Kd*N.dot(L) + Ks*( (H.dot(L))**Ns )
+
+def lobe(Kd, N, L, Ks, R, eps, V):
+    diffuse_intensity = N.dot(L)
+
+    if R.distance_to(V) <= eps:
+        specular_intensity = 1
+    else: specular_intensity = 0
+
+    return Kd*diffuse_intensity

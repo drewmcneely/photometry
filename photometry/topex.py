@@ -63,14 +63,18 @@ class Topex:
     def scatter(self, light_direction, viewer_direction):
         return self.facet_model.scatter(light_direction, viewer_direction)
 
+    def total_scatter(self, viewer_direction):
+        return self.facet_model.total_scatter(viewer_direction)
+
 if __name__ == "__main__":
     topex_dir = Path('/home/drew/dev/photometry/data/models/topex-poseidon/obj/')
+    #topex_dir = Path('/home/drew/dev/photometry/photometry/')
     topex_file_path = topex_dir / "Topex-Posidon-composite.obj"
     topex = Topex.from_path(topex_file_path)
-    topex = topex.reduced()
+    #topex = topex.reduced()
 
-    light_direction = SpherePoint.from_list([1,1,1])
+    #light_direction = SpherePoint.from_list([1,1,1])
     def func(viewer_direction):
-        return topex.scatter(light_direction, viewer_direction)
+        return topex.total_scatter(viewer_direction)
 
     plot(func)

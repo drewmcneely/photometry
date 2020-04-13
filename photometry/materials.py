@@ -14,7 +14,7 @@ class MaterialProperty:
     # alpha: Phong shininess constant
     # lobe_radius: angle defining a specular lobe
     # pomega_0: single scattering albedo
-    def __init__(self, rho=1, alpha=2):
+    def __init__(self, rho=1, alpha=10):
         self.rho=rho
         self.alpha=alpha
 
@@ -43,7 +43,8 @@ class FacetGeometry:
     N = surface_normal
 
     @property
-    def R(self): return self.L.reflected_across(self.N)
+    def reflected_direction(self): return self.L.reflected_across(self.N)
+    R = reflected_direction
 
     @property
     def H(self): return SpherePoint.midpoint(self.L, self.V)
@@ -145,3 +146,6 @@ class Model:
     def scatter(self, light_direction, viewer_direction):
         scatters = [f.scatter(light_direction, viewer_direction) for f in self.facets]
         return sum(scatters)
+
+    def total_scatter(self, viewer_direction):
+        return self.scatter(viewer_direction, viewer_direction)
