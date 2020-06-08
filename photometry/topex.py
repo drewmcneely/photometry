@@ -67,9 +67,10 @@ class Topex:
         return self.facet_model.total_scatter(viewer_direction)
 
 if __name__ == "__main__":
-    topex_dir = Path('/home/drew/dev/photometry/data/models/topex-poseidon/obj/')
-    #topex_dir = Path('/home/drew/dev/photometry/photometry/')
-    topex_file_path = topex_dir / "Topex-Posidon-composite.obj"
+    #topex_dir = Path('/home/drew/dev/photometry/data/models/topex-poseidon/obj/')
+    topex_dir = Path('/home/drew/dev/photometry/photometry/')
+    #topex_file_path = topex_dir / "Topex-Posidon-composite.obj"
+    topex_file_path = topex_dir / "cube.obj"
     topex = Topex.from_path(topex_file_path)
     #topex = topex.reduced()
 
