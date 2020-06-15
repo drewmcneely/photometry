@@ -8,9 +8,9 @@ import pandas as pd
 import progressbar as pb
 
 R = Rotation.for_icosphere()
-sphere = IcoSphere.icosahedron().divided(3)
+sphere = IcoSphere.icosahedron().divided(4)
 
-def plot_function_triangles(f):
+def plot_function_triangles(f, filename):
     #for t in range(5,10):
     #sphere = IcoSphere.icosahedron().divided().reduced(t)
     geo = sphere.geojson
@@ -29,8 +29,6 @@ def plot_function_triangles(f):
     fig.data[0].marker.line.width = 0
     configure_fig(fig)
 
-    #filename = str(t) + ".html"
-    filename = "tris" + ".html"
     po.plot(fig, filename=filename)
 
 def plot_function_points(f):
@@ -100,5 +98,6 @@ def configure_fig(fig):
     return fig
 
 if __name__ == "__main__":
+    """Test this module on a simple function."""
     def f(p): return p.x
     plot_function_triangles(f)

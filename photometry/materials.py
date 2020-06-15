@@ -1,8 +1,9 @@
-import numpy as np
-from numpy import dot
+from numpy import pi
 
-import reflectivity_laws as refl
-from geometry import SpherePoint
+class Material:
+    """This class represents a material as a whole."""
+    pass
+
 
 class MaterialProperty:
     # List of attributes used in reflectivity_laws:
@@ -18,134 +19,127 @@ class MaterialProperty:
         self.rho=rho
         self.alpha=alpha
 
-class FacetGeometry:
-    def __init__(self, light_direction, viewer_direction, surface_normal):
-        self._light = light_direction
-        self._view = viewer_direction
-        self._normal = surface_normal
+# Assume a material object has whatever parameter
+# that is specified by the model.
 
-    @property
-    def light_direction(self): return self._light
-    incidence_direction = light_direction
-    L = light_direction
-    I = light_direction
-    E_0 = light_direction
+# A geometry object has the following vectors:
+#
+# L: Light source direction
+# V: Observer direction
+# H: Halfway vector between L and V
+# N: Surface normal direction
+# R: Direction that N perfectly reflects L
 
-    @property
-    def viewer_direction(self): return self._view
-    observation_direction = viewer_direction
-    V = viewer_direction
-    O = viewer_direction
-    E = viewer_direction
+# All functions with (mat, geom) in the arguments are of type
+# f :: MaterialProperty -> FacetGeometry -> RealNumber
 
-    @property
-    def surface_normal(self): return self._normal
-    N = surface_normal
+# Diffuse reflectivity laws
+def lambert_diffuse(mat, geom):
+    return mat.rho / pi
 
-    @property
-    def reflected_direction(self): return self.L.reflected_across(self.N)
-    R = reflected_direction
+def irradiance_lambert_diffuse(mat, geom):
+    return mat.rho * mat.E_0 / pi
 
-    @property
-    def H(self): return SpherePoint.midpoint(self.L, self.V)
+def color_lambert_diffuse(mat, geom):
+    return mat.color
+
+phong_diffuse = lambert_diffuse
+
+def oren_nayar_diffuse(mat, geom):
+    ti = geom.theta_i
+    tr = geom.theta_r
+    sigma = mat.sigma
+    A = 1 -0.5* sigma**2 / (sigma**2 + 0.33)
+    B = 0.45 * sigma**2 / (sigma**2 + 0.09)
+    alpha = max(ti, tr)
+    beta = min(ti, tr)
+    rho = mat.rho
+    E0 = mat.E_0
+    bracket = A + (B*max(0, cos(ti-tr))*sin(alpha)*cos(beta))
+    return rho / pi * E0 * bracket
+
+def minnaert_diffuse(mat, geom):
+    pass
+
+## Anisotropic
+def ashikhmin_shirley_diffuse(mat, geom):
+    pass
+
+# Specular reflectivity laws
+
+def spec_helper(mat, geom, ret_fun):
+    if geom.V == geom.R: return ret_fun(mat, geom)
+    else: return 0
+
+def perfect_specular(mat, geom):
+    return spec_helper(mat, geom, lambda m,g: 1)
+
+def fresnel_perfect_specular(mat, geom):
+    if geom.V == geom.R: return mat.F_0
+    else: return 0
+
+def wetterer_perfect_specular(mat, geom):
+    if geom.V == geom.R: return mat.F_0 / geom.mu_i
+    else: return 0
 
 
-    # Angles
-    @property
-    def incidence_angle(self): return SpherePoint.angle_between(self.N, self.I)
-    light_angle = incidence_angle
-    theta_i = incidence_angle
-    theta_0 = incidence_angle
+def lobe_helper(mat, geom, ret_fun):
+    e = mat.lobe_radius
+    if angle(geom.V, geom.R) < e:
+        return ret_fun(mat, geom)
+    else: return 0
 
-    @property
-    def observation_angle(self): return SpherePoint.angle_between(self.N, self.O)
-    viewer_angle = observation_angle
-    theta_r = observation_angle
-    theta = observation_angle
+def crappy_lobe_specular(mat, geom):
+    return lobe_helper(mat, geom, lambda m,g: 1)
 
-    @property
-    def phase_angle(self): return SpherePoint.angle_between(self.O, self.I)
-    phi = phase_angle
-    alpha = phase_angle
+def lobe_specular(mat, geom):
+    def ret_fun(m,g):
+        return 1 / sphere_ball_area(m.lobe_radius)
+    return lobe_helper(mat, geom, ret_fun)
 
-    # Projections
-    @property
-    def light_projected_area(self): 
-        L = self.L
-        N = self.N
-        l = L.dot(N)
-        return l
+def wetterer_lobe_specular(mat, geom):
+    def ret_fun(m,g):
+        return m.F_0 / sphere_ball_area(m.lobe_radius)
+    return lobe_helper(mat, geom, ret_fun)
 
-    @property
-    def mu_i(self): return self.light_projected_area
-    @property
-    def mu_0(self): return self.light_projected_area
 
-    @property
-    def viewer_projected_area(self): return self.V.dot(self.N)
-    mu_r = viewer_projected_area
-    mu = viewer_projected_area
+def phong_specular(mat, geom):
+    return geom.R.dot(geom.V) ** mat.alpha
 
-class Facet:
-    def __init__(self,
-            area=1,
-            normal_direction=SpherePoint.from_list([1,0,0]),
-            material_property=MaterialProperty(),
-            diffuse_fraction=0.5,
-            diffuse_law=refl.lambert_diffuse,
-            specular_law=refl.blinn_phong_specular
-            ):
-        self.area = area
-        self.normal_direction = normal_direction
-        self.material_property = material_property
-        self.diffuse_fraction = diffuse_fraction
-        self.specular_fraction = 1-self.diffuse_fraction
-        self.diffuse_law = diffuse_law
-        self.specular_law = specular_law
+def blinn_phong_specular(mat, geom):
+    alphaprime = 4*mat.alpha
+    return geom.N.dot(geom.H) ** alphaprime
 
-    @property
-    def k_d(self): return self.diffuse_fraction
-    d = k_d
+def gaussian_specular(mat, geom):
+    pass
 
-    @property
-    def k_s(self): return self.specular_fraction
-    s = k_s
+def beckmann_specular(mat, geom):
+    pass
 
-    def reflectivity_law(self, mat, geom):
-        d = self.d
-        s = self.s
-        Rd = self.diffuse_law(mat, geom)
-        Rs = self.specular_law(mat, geom)
-        return d*Rd + s*Rs
+## Anisotropic
+def heidrich_seidel_specular(mat, geom):
+    pass
 
-    def scattering_law(self, mat, geom):
-        mu = geom.mu
-        mu_0 = geom.mu_0
-        if mu<0 or mu_0<0:
-            S = 0
-        else:
-            R = self.reflectivity_law
-            S = self.area * mu * mu_0 * R(mat, geom)
-        return S
+def ward_specular(mat, geom):
+    pass
 
-    def mat_geom_pair(self, light_direction, viewer_direction):
-        mat = self.material_property
-        geom = FacetGeometry(light_direction, viewer_direction, self.normal_direction)
-        return (mat, geom)
+def cook_torrance_specular(mat, geom):
+    pass
 
-    def scatter(self, light_direction, viewer_direction):
-        s = self.scattering_law
-        mgpair = self.mat_geom_pair(light_direction, viewer_direction)
-        return s(*mgpair)
+def ashikhmin_shirley_diffuse(mat, geom):
+    pass
 
-class Model:
-    # list of facets
-    def __init__(self, facets=[Facet()]):
-        self.facets = facets
 
-    def scatter(self, light_direction, viewer_direction):
-        scatters = [f.scatter(light_direction, viewer_direction) for f in self.facets]
-        return sum(scatters)
+## Scattering Laws
 
-    def total_scatter(self, viewer_direction):
-        return self.scatter(viewer_direction, viewer_direction)
+def wavefront(Kd, N, L, Ks, H, Ns):
+    return Kd*N.dot(L) + Ks*( (H.dot(L))**Ns )
+
+def lobe(Kd, N, L, Ks, R, eps, V):
+    diffuse_intensity = N.dot(L)
+
+    if R.distance_to(V) <= eps:
+        specular_intensity = 1
+    else: specular_intensity = 0
+
+    return Kd*diffuse_intensity

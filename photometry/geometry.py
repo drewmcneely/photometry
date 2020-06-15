@@ -445,6 +445,7 @@ class Rotation:
     def rotate_vector(self, v): return self.matrix @ v
 
 def point_is_inside_triangle(point, triangle):
+    print("Here!")
     M = triangle.point_matrix
     p = point.vector
     a = np.linalg.inv(M) @ p
