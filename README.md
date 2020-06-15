@@ -1,4 +1,4 @@
-# Project Title
+# photometry.py
 
 This is a collection of routines to model the reflectivity and visualize the photometric output of an illuminated space object.
 The project imports Wavefront .obj files and generates a crude "convex" approximation of the data.
